@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Марина Орехова — Перманентный макияж | Ижевск</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --pink:       #e8a4b8;
+      --pink-light: #fdf0f4;
+      --pink-dark:  #c4728a;
+      --dark:       #2d1f24;
+      --gray:       #7a6870;
+    }
+
+    body {
+      font-family: 'Georgia', serif;
+      color: var(--dark);
+      background: #fff;
+    }
+
+    /* HERO */
+    .hero {
+      background: linear-gradient(135deg, #fdf0f4 0%, #fce4ec 50%, #f8bbd0 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 60px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(232,164,184,0.3) 0%, transparent 70%);
+      top: -100px; right: -100px;
+      border-radius: 50%;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(196,114,138,0.15) 0%, transparent 70%);
+      bottom: -80px; left: -80px;
+      border-radius: 50%;
+    }
+
+    .logo-circle {
+      width: 120px; height: 120px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--pink-dark), var(--pink));
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 28px;
+      box-shadow: 0 8px 32px rgba(196,114,138,0.35);
+      font-size: 42px;
+      position: relative; z-index: 1;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 400;
+      letter-spacing: 2px;
+      color: var(--dark);
+      position: relative; z-index: 1;
+      margin-bottom: 8px;
+    }
+
+    .hero .subtitle {
+      font-size: clamp(0.9rem, 2vw, 1.1rem);
+      color: var(--pink-dark);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      position: relative; z-index: 1;
+    }
+
+    .hero .city {
+      font-size: 0.95rem;
+      color: var(--gray);
+      letter-spacing: 1px;
+      margin-bottom: 40px;
+      position: relative; z-index: 1;
+    }
+
+    .tagline {
+      font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+      color: var(--gray);
+      font-style: italic;
+      margin-bottom: 48px;
+      position: relative; z-index: 1;
+    }
+
+    .btn-primary {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--pink-dark), var(--pink));
+      color: #fff;
+      padding: 18px 48px;
+      border-radius: 50px;
+      text-decoration: none;
+      font-size: 1rem;
+      letter-spacing: 1px;
+      box-shadow: 0 8px 24px rgba(196,114,138,0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative; z-index: 1;
+      font-family: 'Georgia', serif;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(196,114,138,0.5);
+    }
+
+    /* SERVICES */
+    .services {
+      padding: 80px 20px;
+      background: #fff;
+      text-align: center;
+    }
+
+    .section-title {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 400;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+      color: var(--dark);
+    }
+
+    .section-line {
+      width: 60px; height: 2px;
+      background: linear-gradient(90deg, var(--pink), var(--pink-dark));
+      margin: 0 auto 48px;
+    }
+
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 28px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .service-card {
+      background: var(--pink-light);
+      border-radius: 20px;
+      padding: 40px 28px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .service-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 40px rgba(196,114,138,0.15);
+    }
+
+    .service-icon {
+      font-size: 2.4rem;
+      margin-bottom: 16px;
+    }
+
+    .service-card h3 {
+      font-size: 1.1rem;
+      font-weight: 400;
+      letter-spacing: 1px;
+      color: var(--dark);
+      margin-bottom: 10px;
+    }
+
+    .service-card p {
+      font-size: 0.9rem;
+      color: var(--gray);
+      line-height: 1.6;
+    }
+
+    /* ABOUT */
+    .about {
+      padding: 80px 20px;
+      background: linear-gradient(135deg, #fdf0f4, #fff);
+      text-align: center;
+    }
+
+    .about-inner {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .about p {
+      font-size: 1.05rem;
+      color: var(--gray);
+      line-height: 1.9;
+      font-style: italic;
+    }
+
+    /* BENEFITS */
+    .benefits {
+      padding: 80px 20px;
+      background: #fff;
+      text-align: center;
+    }
+
+    .benefits-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .benefit {
+      padding: 24px 16px;
+    }
+
+    .benefit .num {
+      font-size: 2.5rem;
+      color: var(--pink-dark);
+      font-weight: 400;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .benefit p {
+      font-size: 0.9rem;
+      color: var(--gray);
+      line-height: 1.5;
+    }
+
+    /* CTA */
+    .cta {
+      padding: 80px 20px;
+      background: linear-gradient(135deg, #fce4ec, #f8bbd0);
+      text-align: center;
+    }
+
+    .cta h2 {
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      font-weight: 400;
+      letter-spacing: 2px;
+      margin-bottom: 16px;
+      color: var(--dark);
+    }
+
+    .cta p {
+      color: var(--gray);
+      margin-bottom: 36px;
+      font-size: 1rem;
+    }
+
+    .btn-outline {
+      display: inline-block;
+      border: 2px solid var(--pink-dark);
+      color: var(--pink-dark);
+      padding: 16px 44px;
+      border-radius: 50px;
+      text-decoration: none;
+      font-size: 1rem;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+      font-family: 'Georgia', serif;
+      margin: 8px;
+    }
+
+    .btn-outline:hover {
+      background: var(--pink-dark);
+      color: #fff;
+    }
+
+    /* FOOTER */
+    footer {
+      padding: 32px 20px;
+      background: var(--dark);
+      text-align: center;
+      color: rgba(255,255,255,0.4);
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+    }
+
+    @media (max-width: 480px) {
+      .hero { padding: 80px 20px 60px; }
+      .btn-primary { padding: 16px 36px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="logo-circle">✦</div>
+    <p class="subtitle">Мастер перманентного макияжа</p>
+    <h1>Марина Орехова</h1>
+    <p class="city">Ижевск</p>
+    <p class="tagline">Там, где живёт красота</p>
+    <a href="https://vk.com/marishulka15" target="_blank" class="btn-primary">Записаться на консультацию</a>
+  </section>
+
+  <!-- SERVICES -->
+  <section class="services">
+    <h2 class="section-title">Услуги</h2>
+    <div class="section-line"></div>
+    <div class="services-grid">
+      <div class="service-card">
+        <div class="service-icon">💄</div>
+        <h3>Перманентный макияж</h3>
+        <p>Губы, стрелки, межресничное пространство. Естественный результат, который держится годами.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">✦</div>
+        <h3>Оформление и окрашивание бровей</h3>
+        <p>Архитектура, коррекция формы, окрашивание хной и краской. Идеальные брови каждый день.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">👁</div>
+        <h3>Ботокс ресниц</h3>
+        <p>Восстановление, выпрямление и питание ресниц. Эффект шёлка без завивки.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section class="about">
+    <div class="about-inner">
+      <h2 class="section-title">О мастере</h2>
+      <div class="section-line"></div>
+      <p>Я Марина — мастер перманентного макияжа из Ижевска. Моя работа — это не просто процедуры, это внимание к деталям, забота о вашей коже и результат, которым вы будете гордиться каждое утро.</p>
+    </div>
+  </section>
+
+  <!-- BENEFITS -->
+  <section class="benefits">
+    <h2 class="section-title">Почему выбирают меня</h2>
+    <div class="section-line"></div>
+    <div class="benefits-grid">
+      <div class="benefit">
+        <span class="num">100%</span>
+        <p>Безопасные сертифицированные материалы</p>
+      </div>
+      <div class="benefit">
+        <span class="num">★ 5.0</span>
+        <p>Отзывы клиентов говорят сами за себя</p>
+      </div>
+      <div class="benefit">
+        <span class="num">∞</span>
+        <p>Индивидуальный подход к каждому клиенту</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <h2>Готовы к преображению?</h2>
+    <p>Свяжитесь со мной — обсудим вашу процедуру и подберём удобное время</p>
+    <a href="https://vk.com/marishulka15" target="_blank" class="btn-primary">Написать ВКонтакте</a>
+  </section>
+
+  <footer>
+    © 2026 Марина Орехова · Ижевск · Перманентный макияж
+  </footer>
+
+</body>
+</html>

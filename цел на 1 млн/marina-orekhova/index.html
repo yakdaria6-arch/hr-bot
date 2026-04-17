@@ -280,9 +280,119 @@
       letter-spacing: 1px;
     }
 
+    /* GALLERY */
+    .gallery {
+      padding: 80px 20px;
+      background: var(--pink-light);
+      text-align: center;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .gallery-grid img {
+      width: 100%;
+      height: 280px;
+      object-fit: cover;
+      border-radius: 16px;
+      transition: transform 0.3s, box-shadow 0.3s;
+      cursor: pointer;
+    }
+
+    .gallery-grid img:hover {
+      transform: scale(1.03);
+      box-shadow: 0 16px 40px rgba(196,114,138,0.3);
+    }
+
+    /* GIFT CERT */
+    .gift {
+      padding: 80px 20px;
+      background: linear-gradient(135deg, #3d1a5c, #6a2c9e);
+      text-align: center;
+      color: #fff;
+    }
+
+    .gift h2 {
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      font-weight: 400;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+    }
+
+    .gift .section-line { background: linear-gradient(90deg, #e8c4f0, #c48ad4); }
+
+    .gift p {
+      font-size: 1rem;
+      opacity: 0.85;
+      margin-bottom: 36px;
+      line-height: 1.7;
+    }
+
+    .gift-img {
+      width: 280px;
+      border-radius: 12px;
+      margin-bottom: 32px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+    }
+
+    .btn-gift {
+      display: inline-block;
+      background: linear-gradient(135deg, #e8c4f0, #c48ad4);
+      color: #3d1a5c;
+      padding: 16px 44px;
+      border-radius: 50px;
+      text-decoration: none;
+      font-size: 1rem;
+      letter-spacing: 1px;
+      font-family: 'Georgia', serif;
+      font-weight: bold;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 8px 24px rgba(196,138,212,0.4);
+    }
+
+    .btn-gift:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(196,138,212,0.6);
+    }
+
+    /* LIGHTBOX */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lightbox.active { display: flex; }
+
+    .lightbox img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 12px;
+      object-fit: contain;
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 20px; right: 28px;
+      color: #fff;
+      font-size: 2.5rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
     @media (max-width: 480px) {
       .hero { padding: 80px 20px 60px; }
       .btn-primary { padding: 16px 36px; }
+      .gallery-grid img { height: 200px; }
     }
   </style>
 </head>
@@ -321,6 +431,24 @@
     </div>
   </section>
 
+  <!-- GALLERY -->
+  <section class="gallery">
+    <h2 class="section-title">Работы</h2>
+    <div class="section-line"></div>
+    <div class="gallery-grid">
+      <img src="6-pnLzCx3NFpvaHno32IjOW6ciCauz3PKUGMqQf0z1bkHOjdpSr6aEJL7HXhrRbbor4x0k4S3kZWJ3OvNCxa1BXV.jpg" alt="До и после удаления" onclick="openLightbox(this.src)" />
+      <img src="M_4K7tz0zqgefXTk1fzGYbY0A_KH8aXbYKiymultlSRidRt35dL9DMTIOZuOFGOdPB1i53NiSuzrIr-26Ike2NbO.jpg" alt="Перманентный макияж бровей" onclick="openLightbox(this.src)" />
+      <img src="jZ_lxDJpja5yi0SKfqjmLnBc0R8NsCEwPFc7YPVQc3ozBVM4zWDysjbuR7QAr5piKufzMRHLhSNnULEqie53FPCW.jpg" alt="Оформление бровей" onclick="openLightbox(this.src)" />
+      <img src="silTpzVOdaaXCdS_aoBblvdr8bXS5z4es059j5BCIXRb5BhL8I7rgxQ8qQY4JnlLkVffU19i35-1YoiwSmCdryN8.jpg" alt="Оформление бровей" onclick="openLightbox(this.src)" />
+    </div>
+  </section>
+
+  <!-- LIGHTBOX -->
+  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <span class="lightbox-close" onclick="closeLightbox()">×</span>
+    <img id="lightbox-img" src="" alt="" />
+  </div>
+
   <!-- ABOUT -->
   <section class="about">
     <div class="about-inner">
@@ -350,15 +478,37 @@
     </div>
   </section>
 
+  <!-- GIFT CERTIFICATE -->
+  <section class="gift">
+    <h2>Подарочный сертификат</h2>
+    <div class="section-line" style="margin:0 auto 32px;"></div>
+    <img class="gift-img" src="OsFnV8u_cY6LcsfXckyGqzhBfZSG6vI8AtWICUUaUW3SKkD7FNN6_6d-4F5QwsvMmKi6lzt3G74LT14_lIBleVXL.jpg" alt="Подарочный сертификат Марина Орехова" />
+    <p>Подарите красоту близкому человеку.<br>Сертификат на любую сумму — идеальный подарок на день рождения или праздник.</p>
+    <a href="https://vk.com/marishulka15" target="_blank" class="btn-gift">Заказать сертификат</a>
+  </section>
+
   <!-- CTA -->
   <section class="cta">
     <h2>Готовы к преображению?</h2>
     <p>Свяжитесь со мной — обсудим вашу процедуру и подберём удобное время</p>
-    <a href="https://vk.com/marishulka15" target="_blank" class="btn-primary">Написать ВКонтакте</a>
+    <a href="tel:+79124404350" class="btn-primary">Позвонить</a>
+    <a href="https://vk.com/marishulka15" target="_blank" class="btn-outline">ВКонтакте</a>
+    <a href="https://instagram.com/marina_pm_zh" target="_blank" class="btn-outline">Instagram</a>
   </section>
 
+  <script>
+    function openLightbox(src) {
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox').classList.add('active');
+    }
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('active');
+    }
+    document.addEventListener('keydown', e => { if(e.key === 'Escape') closeLightbox(); });
+  </script>
+
   <footer>
-    © 2026 Марина Орехова · Ижевск · Перманентный макияж
+    © 2026 Марина Орехова · Ижевск · +7 (912) 440-43-50 · @marina_pm_zh
   </footer>
 
 </body>

@@ -46,8 +46,12 @@ export default function ChatBot({ vacancy, onFinish }: Props) {
     }, delay)
   }
 
+  const initialized = useRef(false)
+
   // Инициализация: приветствие + первый вопрос
   useEffect(() => {
+    if (initialized.current) return
+    initialized.current = true
     botSay(`Здравствуйте! 👋 Я помощник компании «${vacancy.company_name}». Помогу оформить вашу анкету на вакансию «${vacancy.title}».`, 500)
     botSay(`Ответьте, пожалуйста, на ${totalSteps} коротких вопроса. Это займёт 3–5 минут.`, 1400)
     botSay(allQuestions[0].text, 2400)

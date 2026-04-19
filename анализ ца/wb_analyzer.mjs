@@ -6,40 +6,65 @@ const nmId = parseInt(process.argv[2]) || 175088486;
 const TARGET_REVIEWS = 300; // сколько отзывов с текстом собрать
 
 // Шаг 1: Получаем imt_id через basket API
-function getBasketUrl(nmId) {
-  const vol = Math.floor(nmId / 100000);
-  const part = Math.floor(nmId / 1000);
-  let basket;
-  if      (vol <= 143)  basket = '01';
-  else if (vol <= 287)  basket = '02';
-  else if (vol <= 431)  basket = '03';
-  else if (vol <= 719)  basket = '04';
-  else if (vol <= 1007) basket = '05';
-  else if (vol <= 1061) basket = '06';
-  else if (vol <= 1115) basket = '07';
-  else if (vol <= 1169) basket = '08';
-  else if (vol <= 1313) basket = '09';
-  else if (vol <= 1601) basket = '10';
-  else if (vol <= 1655) basket = '11';
-  else if (vol <= 1919) basket = '12';
-  else if (vol <= 2045) basket = '13';
-  else if (vol <= 2189) basket = '14';
-  else if (vol <= 2405) basket = '15';
-  else if (vol <= 2621) basket = '16';
-  else if (vol <= 2837) basket = '17';
-  else if (vol <= 3053) basket = '18';
-  else if (vol <= 3269) basket = '19';
-  else if (vol <= 3485) basket = '20';
-  else basket = '21';
-  return `https://basket-${basket}.wbbasket.ru/vol${vol}/part${part}/${nmId}/info/ru/card.json`;
+function getBasketNum(vol) {
+  if      (vol <= 143)  return '01';
+  else if (vol <= 287)  return '02';
+  else if (vol <= 431)  return '03';
+  else if (vol <= 719)  return '04';
+  else if (vol <= 1007) return '05';
+  else if (vol <= 1061) return '06';
+  else if (vol <= 1115) return '07';
+  else if (vol <= 1169) return '08';
+  else if (vol <= 1313) return '09';
+  else if (vol <= 1601) return '10';
+  else if (vol <= 1655) return '11';
+  else if (vol <= 1919) return '12';
+  else if (vol <= 2045) return '13';
+  else if (vol <= 2189) return '14';
+  else if (vol <= 2405) return '15';
+  else if (vol <= 2621) return '16';
+  else if (vol <= 2837) return '17';
+  else if (vol <= 3053) return '18';
+  else if (vol <= 3269) return '19';
+  else if (vol <= 3485) return '20';
+  else if (vol <= 3701) return '21';
+  else if (vol <= 3917) return '22';
+  else if (vol <= 4133) return '23';
+  else if (vol <= 4349) return '24';
+  else if (vol <= 4565) return '25';
+  else if (vol <= 4781) return '26';
+  else if (vol <= 4997) return '27';
+  else if (vol <= 5213) return '28';
+  else if (vol <= 5429) return '29';
+  else if (vol <= 5645) return '30';
+  else return '31';
 }
 
 async function getImtId(nmId) {
-  const url = getBasketUrl(nmId);
-  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://www.wildberries.ru/' } });
-  if (!res.ok) throw new Error(`Не удалось получить карточку товара: ${res.status}`);
-  const data = await res.json();
-  return { imtId: data.imt_id, name: data.imt_name, brand: data.subj_root_name };
+  const vol = Math.floor(nmId / 100000);
+  const part = Math.floor(nmId / 1000);
+  const headers = { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://www.wildberries.ru/' };
+
+  // Пробуем сначала вычисленный basket, потом перебираем соседние
+  const guessed = getBasketNum(vol);
+  const candidates = [guessed];
+  for (let i = 1; i <= 5; i++) {
+    const n = parseInt(guessed) + i;
+    candidates.push(String(n).padStart(2, '0'));
+    const m = parseInt(guessed) - i;
+    if (m >= 1) candidates.unshift(String(m).padStart(2, '0'));
+  }
+
+  for (const basket of [...new Set(candidates)]) {
+    const url = `https://basket-${basket}.wbbasket.ru/vol${vol}/part${part}/${nmId}/info/ru/card.json`;
+    try {
+      const res = await fetch(url, { headers });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.imt_id) return { imtId: data.imt_id, name: data.imt_name, brand: data.subj_root_name };
+    } catch {}
+  }
+  throw new Error(`Не удалось найти карточку товара ни в одном basket`);
 }
 
 // Шаг 2: Собираем отзывы (несколько страниц)

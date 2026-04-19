@@ -40,6 +40,7 @@ export interface Candidate {
   name: string
   email: string
   phone?: string
+  telegram?: string
   answers: Answer[]
   total_score: number       // 0-100 %
   category: ScoreCategory

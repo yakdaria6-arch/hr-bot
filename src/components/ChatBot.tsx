@@ -14,9 +14,10 @@ interface Props {
 
 // Системные вопросы (всегда первые)
 const SYS_QUESTIONS = [
-  { id: '__name__',  text: 'Как вас зовут?' },
-  { id: '__email__', text: 'Ваш email для связи?' },
-  { id: '__phone__', text: 'Номер телефона (необязательно — можно пропустить)' },
+  { id: '__name__',     text: 'Как вас зовут?' },
+  { id: '__email__',    text: 'Ваш email для связи?' },
+  { id: '__phone__',    text: 'Номер телефона?' },
+  { id: '__telegram__', text: 'Ваш ник в Telegram (например @username)?' },
 ]
 
 export default function ChatBot({ vacancy, onFinish }: Props) {

@@ -40,9 +40,10 @@ export default function ApplyPage() {
     const candidate: Omit<Candidate, 'id'> = {
       vacancy_id:   vacancy.id,
       vacancy_title: vacancy.title,
-      name:  rawAnswers['__name__']  || '',
-      email: rawAnswers['__email__'] || '',
-      phone: rawAnswers['__phone__'] || '',
+      name:     rawAnswers['__name__']     || '',
+      email:    rawAnswers['__email__']    || '',
+      phone:    rawAnswers['__phone__']    || '',
+      telegram: rawAnswers['__telegram__'] || '',
       answers,
       total_score: score,
       category,

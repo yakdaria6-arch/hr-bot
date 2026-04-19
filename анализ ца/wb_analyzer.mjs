@@ -67,41 +67,55 @@ async function getImtId(nmId) {
   throw new Error(`Не удалось найти карточку товара ни в одном basket`);
 }
 
-// Шаг 2: Собираем отзывы (несколько страниц)
+// Шаг 2: Собираем отзывы с пагинацией
 async function fetchReviews(imtId) {
-  const orders = ['dateDesc', 'dateAsc', 'rankAsc'];
   const allReviews = new Map(); // дедупликация по id
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Accept': 'application/json',
+    'Referer': 'https://www.wildberries.ru/'
+  };
+
+  const orders = ['dateDesc', 'dateAsc', 'rankAsc'];
 
   for (const order of orders) {
     if (allReviews.size >= TARGET_REVIEWS) break;
 
-    const url = `https://feedbacks2.wb.ru/feedbacks/v2/${imtId}?order=${order}`;
-    try {
-      const res = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json',
-          'Referer': `https://www.wildberries.ru/`
-        }
-      });
-      const data = await res.json();
-      const feedbacks = data.feedbacks || [];
+    let skip = 0;
+    let hasMore = true;
 
-      feedbacks.forEach(f => {
-        const text = [f.text, f.pros, f.cons].filter(Boolean).join(' ').trim();
-        if (text.length > 10) allReviews.set(f.id, {
-          text: f.text || '',
-          pros: f.pros || '',
-          cons: f.cons || '',
-          rating: f.productValuation,
-          date: f.createdDate?.slice(0,10)
+    while (hasMore && allReviews.size < TARGET_REVIEWS) {
+      const url = `https://feedbacks2.wb.ru/feedbacks/v2/${imtId}?order=${order}&skip=${skip}&take=5000`;
+      try {
+        const res = await fetch(url, { headers });
+        const data = await res.json();
+        const feedbacks = data.feedbacks || [];
+
+        if (feedbacks.length === 0) { hasMore = false; break; }
+
+        const beforeSize = allReviews.size;
+        feedbacks.forEach(f => {
+          const text = [f.text, f.pros, f.cons].filter(Boolean).join(' ').trim();
+          if (text.length > 10) allReviews.set(f.id, {
+            text: f.text || '',
+            pros: f.pros || '',
+            cons: f.cons || '',
+            rating: f.productValuation,
+            date: f.createdDate?.slice(0, 10)
+          });
         });
-      });
 
-      console.log(`  [${order}] получено: ${feedbacks.length}, с текстом: ${allReviews.size}`);
-      await new Promise(r => setTimeout(r, 1000));
-    } catch(e) {
-      console.log(`  Ошибка [${order}]:`, e.message);
+        console.log(`  [${order}] skip=${skip} получено: ${feedbacks.length}, всего с текстом: ${allReviews.size}`);
+
+        // Если новых отзывов не добавилось — дальше нет смысла
+        if (allReviews.size === beforeSize) { hasMore = false; break; }
+
+        skip += feedbacks.length;
+        await new Promise(r => setTimeout(r, 800));
+      } catch(e) {
+        console.log(`  Ошибка [${order}] skip=${skip}:`, e.message);
+        hasMore = false;
+      }
     }
   }
 

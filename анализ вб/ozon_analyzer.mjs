@@ -93,10 +93,15 @@ async function ozonFetch(url) {
 }
 
 // Получаем страницу отзывов
-async function fetchReviewsPage(slug, nextParams = null) {
-  const pageQuery = nextParams
-    ? `/product/${slug}/reviews/${nextParams}`
-    : `/product/${slug}/reviews/?page=1&sort=date_desc`;
+async function fetchReviewsPage(slug, nextParams = null, pageNum = 1) {
+  let pageQuery;
+  if (nextParams && typeof nextParams === "string" && nextParams.startsWith("?")) {
+    pageQuery = `/product/${slug}/reviews/${nextParams}`;
+  } else if (nextParams && typeof nextParams === "string") {
+    pageQuery = `/product/${slug}/reviews/?${nextParams}`;
+  } else {
+    pageQuery = `/product/${slug}/reviews/?page=${pageNum}&sort=date_desc`;
+  }
   const url = `https://www.ozon.ru/api/entrypoint-api.bx/page/json/v2?url=${encodeURIComponent(pageQuery)}`;
   return ozonFetch(url);
 }
@@ -154,7 +159,13 @@ function parseNextButton(data) {
   if (!reviewKey) return null;
   try {
     const widget = typeof widgets[reviewKey] === "string" ? JSON.parse(widgets[reviewKey]) : widgets[reviewKey];
-    return widget?.paging?.nextButton || null;
+    const btn = widget?.paging?.nextButton;
+    if (!btn) return null;
+    // nextButton может быть строкой-URL или объектом {url, action}
+    if (typeof btn === "string") return btn;
+    if (btn?.url) return btn.url;
+    if (btn?.action?.link) return btn.action.link;
+    return null;
   } catch { return null; }
 }
 
@@ -166,14 +177,19 @@ async function collectReviews(slug) {
   let pageNum = 1;
   let nextParams = null;
   let productName = slug;
+  let emptyStreak = 0; // сколько пустых страниц подряд
 
   while (allReviews.length < TARGET_REVIEWS) {
     process.stdout.write(`  Страница ${pageNum}... `);
-    const data = await fetchReviewsPage(slug, nextParams);
+    const data = await fetchReviewsPage(slug, nextParams, pageNum);
 
     if (!data) {
       console.log("❌ Ошибка запроса");
-      break;
+      emptyStreak++;
+      if (emptyStreak >= 3) { console.log("  → 3 ошибки подряд, останавливаемся"); break; }
+      pageNum++;
+      await new Promise(r => setTimeout(r, 1500));
+      continue;
     }
 
     if (pageNum === 1) {
@@ -183,9 +199,18 @@ async function collectReviews(slug) {
     const reviews = parseReviews(data);
 
     if (reviews.length === 0) {
-      console.log("стоп (отзывы закончились)");
-      break;
+      emptyStreak++;
+      console.log(`пусто (${emptyStreak}/3)`);
+      if (emptyStreak >= 3) {
+        console.log("  → стоп (отзывы закончились)");
+        break;
+      }
+      pageNum++;
+      await new Promise(r => setTimeout(r, 1000));
+      continue;
     }
+
+    emptyStreak = 0;
 
     // Фильтр по периоду — отзывы отсортированы по убыванию даты
     if (periodFrom) {
@@ -195,7 +220,6 @@ async function collectReviews(slug) {
       allReviews.push(...filtered);
       console.log(`получено ${filtered.length} за период (всего: ${allReviews.length})`);
 
-      // Если последний отзыв на странице старше периода — дальше нет смысла
       if (oldestOnPage && oldestOnPage < periodFrom) {
         console.log("  → достигли границы периода, останавливаемся");
         break;
@@ -206,7 +230,10 @@ async function collectReviews(slug) {
     }
 
     nextParams = parseNextButton(data);
-    if (!nextParams) break;
+    // Если nextButton не найден — пробуем ручную пагинацию
+    if (!nextParams) {
+      process.stdout.write(`  [нет nextButton, пробуем страницу ${pageNum + 1}] `);
+    }
 
     pageNum++;
     await new Promise(r => setTimeout(r, 800));

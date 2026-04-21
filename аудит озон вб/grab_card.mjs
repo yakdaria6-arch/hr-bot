@@ -3,7 +3,11 @@
 // Пример Ozon: node grab_card.mjs https://www.ozon.ru/product/nazvanie-123456/
 // Пример WB:   node grab_card.mjs https://www.wildberries.ru/catalog/123456/detail.aspx
 
-import puppeteer from 'puppeteer';
+import { addExtra } from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import puppeteerCore from 'puppeteer';
+const puppeteer = addExtra(puppeteerCore);
+puppeteer.use(StealthPlugin());
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -98,7 +102,7 @@ async function grabOzon(slug) {
 
     console.log('🌐 Открываю карточку товара...');
     await page.goto(`https://www.ozon.ru/product/${slug}/`, { waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {});
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, 3000));
 
     // Прокручиваем галерею — кликаем стрелку вперёд несколько раз
     for (let i = 0; i < 15; i++) {

@@ -1,9 +1,30 @@
 // WB Анализатор отзывов конкурентов
-// Использование: node wb_analyzer.mjs <артикул WB>
-// Пример: node wb_analyzer.mjs 175088486
+// Использование: node wb_analyzer.mjs <артикул WB> [--limit=1000] [--period=7d]
+// Периоды: --period=1d  --period=7d  --period=30d
+// Пример: node wb_analyzer.mjs 175088486 --period=30d
 
 const nmId = parseInt(process.argv[2]) || 175088486;
-const TARGET_REVIEWS = 300; // сколько отзывов с текстом собрать
+const args = process.argv.slice(3);
+
+const limitArg = args.find(a => a.startsWith('--limit='));
+const periodArg = args.find(a => a.startsWith('--period='));
+
+const TARGET_REVIEWS = limitArg ? parseInt(limitArg.split('=')[1]) : 2000;
+
+function parsePeriod(arg) {
+  if (!arg) return null;
+  const val = arg.split('=')[1];
+  const now = Date.now();
+  if (val === '1d')  return new Date(now - 1  * 24 * 60 * 60 * 1000);
+  if (val === '7d')  return new Date(now - 7  * 24 * 60 * 60 * 1000);
+  if (val === '30d') return new Date(now - 30 * 24 * 60 * 60 * 1000);
+  return null;
+}
+const periodFrom = parsePeriod(periodArg);
+
+if (periodFrom) {
+  console.log(`📅 Фильтр по периоду: с ${periodFrom.toLocaleDateString('ru-RU')}`);
+}
 
 // Шаг 1: Получаем imt_id через basket API
 function getBasketNum(vol) {
@@ -94,18 +115,38 @@ async function fetchReviews(imtId) {
         if (feedbacks.length === 0) { hasMore = false; break; }
 
         const beforeSize = allReviews.size;
+        let hitPeriodBound = false;
+
         feedbacks.forEach(f => {
           const text = [f.text, f.pros, f.cons].filter(Boolean).join(' ').trim();
-          if (text.length > 10) allReviews.set(f.id, {
+          if (text.length <= 10) return;
+
+          const date = f.createdDate?.slice(0, 10) || '';
+          const createdAt = f.createdDate ? new Date(f.createdDate) : null;
+
+          // Если отзыв старше периода — пропускаем и ставим флаг
+          if (periodFrom && createdAt && createdAt < periodFrom) {
+            hitPeriodBound = true;
+            return;
+          }
+
+          allReviews.set(f.id, {
             text: f.text || '',
             pros: f.pros || '',
             cons: f.cons || '',
             rating: f.productValuation,
-            date: f.createdDate?.slice(0, 10)
+            date,
           });
         });
 
         console.log(`  [${order}] skip=${skip} получено: ${feedbacks.length}, всего с текстом: ${allReviews.size}`);
+
+        // Останавливаемся если достигли границы периода
+        if (periodFrom && hitPeriodBound) {
+          console.log('  → достигли границы периода, останавливаемся');
+          hasMore = false;
+          break;
+        }
 
         // Если новых отзывов не добавилось — дальше нет смысла
         if (allReviews.size === beforeSize) { hasMore = false; break; }
@@ -147,7 +188,7 @@ async function analyzeWithClaude(productName, reviews) {
       'content-type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 2000,
       messages: [{
         role: 'user',
@@ -177,7 +218,9 @@ ${reviewsText}`
 // MAIN
 async function main() {
   console.log(`\n📦 WB Анализатор отзывов`);
-  console.log(`Артикул: ${nmId}\n`);
+  console.log(`Артикул: ${nmId}`);
+  if (periodArg) console.log(`📅 Период: ${periodArg.split('=')[1]}`);
+  console.log();
 
   // Получаем imt_id
   console.log('🔍 Получаю информацию о товаре...');
@@ -209,10 +252,11 @@ async function main() {
 
   // Всегда сохраняем отзывы в файл для анализа
   const fs = await import('fs');
-  const filename = `reviews_${nmId}.txt`;
+  const suffix = periodArg ? `_${periodArg.split('=')[1]}` : '';
+  const filename = `reviews_${nmId}${suffix}.txt`;
   const lines = reviews.slice(0, 300).map((r, i) => {
     const parts = [r.text, r.pros ? 'Плюсы: '+r.pros : '', r.cons ? 'Минусы: '+r.cons : ''].filter(Boolean).join(' | ');
-    return `${i+1}. [${r.rating}★] ${parts}`;
+    return `${i+1}. [${r.rating}★] [${r.date}] ${parts}`;
   });
   fs.writeFileSync(filename, lines.join('\n'), 'utf8');
   console.log(`\n💾 Отзывы сохранены в файл: ${filename}`);
@@ -225,8 +269,8 @@ async function main() {
     console.log(analysis);
     console.log('═'.repeat(60));
 
-    const resultFile = `result_${nmId}.md`;
-    const content = `# Анализ ЦА: ${name}\n\nАртикул WB: ${nmId} | imt_id: ${imtId}\nОтзывов: ${Math.min(reviews.length, 150)}\nДата: ${new Date().toLocaleDateString('ru-RU')}\n\n${analysis}`;
+    const resultFile = `result_${nmId}${suffix}.md`;
+    const content = `# Анализ ЦА: ${name}\n\nАртикул WB: ${nmId} | imt_id: ${imtId}\nОтзывов: ${Math.min(reviews.length, 150)}\nПериод: ${periodArg || 'все время'}\nДата: ${new Date().toLocaleDateString('ru-RU')}\n\n${analysis}`;
     fs.writeFileSync(resultFile, content, 'utf8');
     console.log(`💾 Анализ сохранён: ${resultFile}`);
   }

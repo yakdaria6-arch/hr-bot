@@ -2,19 +2,36 @@
 // Использование: node ozon_analyzer.mjs <ссылка на товар Ozon>
 // Пример: node ozon_analyzer.mjs https://www.ozon.ru/product/shampun-mixit-123456789/
 
-import { writeFileSync } from "fs";
+import { writeFileSync, readFileSync, existsSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 
 const input = process.argv[2];
 const TARGET_REVIEWS = 200;
+
+// Читаем куки из файла ozon_cookies.txt если есть
+function loadCookies() {
+  const file = join(dirname(fileURLToPath(import.meta.url)), "ozon_cookies.txt");
+  if (existsSync(file)) {
+    const cookies = readFileSync(file, "utf8").trim();
+    if (cookies) {
+      console.log("🍪 Куки загружены из ozon_cookies.txt");
+      return cookies;
+    }
+  }
+  console.log("⚠️  Файл ozon_cookies.txt не найден — запросы могут быть заблокированы");
+  console.log("   Инструкция: откройте ozon.ru в браузере → F12 → Network → любой запрос → скопируйте Cookie: ...");
+  return "";
+}
+
+const COOKIES = loadCookies();
 
 const HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
   "Accept": "application/json",
   "Accept-Language": "ru-RU,ru;q=0.9",
-  "Origin": "https://www.ozon.ru",
   "Referer": "https://www.ozon.ru/",
-  "x-o3-app-name": "ozonapp_android",
-  "x-o3-app-version": "6.47.0",
+  ...(COOKIES && { "Cookie": COOKIES }),
 };
 
 // Извлекаем slug из URL или используем как slug напрямую
@@ -31,14 +48,27 @@ function extractSlug(input) {
   return input.replace(/\/$/, "");
 }
 
-// Получаем отзывы через entrypoint-api (публичный, без авторизации)
+// Получаем отзывы через entrypoint-api
 async function fetchReviewsPage(slug, page = 1) {
-  const url = `https://www.ozon.ru/api/entrypoint-api.bx/page/json/v2?url=/product/${slug}/reviews/?page=${page}&sort=date_desc`;
+  let url = `https://www.ozon.ru/api/entrypoint-api.bx/page/json/v2?url=/product/${slug}/reviews/?page=${page}&sort=date_desc`;
+  let headers = { ...HEADERS };
 
   try {
-    const res = await fetch(url, { headers: HEADERS });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
+    // Ozon делает 307 редирект с __rr=1 при первом запросе — следуем вручную
+    for (let i = 0; i < 5; i++) {
+      const res = await fetch(url, { headers, redirect: "manual" });
+      const setCookie = res.headers.get("set-cookie");
+      if (setCookie) {
+        const m = setCookie.match(/^([^=]+)=([^;]+)/);
+        if (m) headers.Cookie = (headers.Cookie || "") + `; ${m[1]}=${m[2]}`;
+      }
+      if (res.status === 200) return await res.json();
+      const loc = res.headers.get("location");
+      if (!loc) throw new Error(`HTTP ${res.status}`);
+      url = loc;
+      await new Promise(r => setTimeout(r, 300));
+    }
+    throw new Error("Слишком много редиректов");
   } catch (e) {
     return null;
   }
@@ -47,12 +77,10 @@ async function fetchReviewsPage(slug, page = 1) {
 // Вытаскиваем отзывы из ответа
 function parseReviews(data) {
   const reviews = [];
-
-  // Ozon возвращает страницу как набор виджетов
   const widgets = data?.widgetStates || {};
 
   for (const [key, value] of Object.entries(widgets)) {
-    if (!key.includes("webReview") && !key.includes("reviews")) continue;
+    if (!key.startsWith("webListReviews")) continue;
 
     let parsed;
     try {
@@ -61,16 +89,14 @@ function parseReviews(data) {
       continue;
     }
 
-    // Собираем отзывы из виджета
-    const items = parsed?.reviews || parsed?.items || [];
-    for (const item of items) {
-      const text = item?.content?.text || item?.text || "";
-      const rating = item?.rating || item?.score || 0;
-      const date = item?.date || item?.publishedAt || "";
-      const pros = item?.content?.aspects?.find(a => a.type === "PROS")?.text || "";
-      const cons = item?.content?.aspects?.find(a => a.type === "CONS")?.text || "";
+    for (const item of (parsed?.reviews || [])) {
+      const text = item?.content?.comment || "";
+      const rating = item?.content?.score || 0;
+      const date = item?.publishedAt ? new Date(item.publishedAt * 1000).toISOString().slice(0, 10) : "";
+      const pros = item?.content?.positive || "";
+      const cons = item?.content?.negative || "";
 
-      if (text.length > 10) {
+      if (text.length > 5) {
         reviews.push({ text, rating, date, pros, cons });
       }
     }

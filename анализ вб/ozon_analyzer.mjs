@@ -14,7 +14,7 @@ const args = process.argv.slice(3);
 const limitArg = args.find(a => a.startsWith("--limit="));
 const periodArg = args.find(a => a.startsWith("--period="));
 
-const TARGET_REVIEWS = limitArg ? parseInt(limitArg.split("=")[1]) : 2000;
+const TARGET_REVIEWS = limitArg ? parseInt(limitArg.split("=")[1]) : Infinity;
 
 // Вычисляем минимальную дату из --period
 function parsePeriod(arg) {

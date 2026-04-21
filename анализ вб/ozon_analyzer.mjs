@@ -1,13 +1,36 @@
 // Ozon Анализатор отзывов
-// Использование: node ozon_analyzer.mjs <ссылка на товар Ozon>
-// Пример: node ozon_analyzer.mjs https://www.ozon.ru/product/shampun-mixit-123456789/
+// Использование: node ozon_analyzer.mjs <ссылка> [--limit=1000] [--period=7d]
+// Периоды: --period=1d  --period=7d  --period=30d
+// Пример: node ozon_analyzer.mjs https://www.ozon.ru/product/nazvanie-123456/ --period=30d
 
 import { writeFileSync, readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
 const input = process.argv[2];
-const TARGET_REVIEWS = 200;
+const args = process.argv.slice(3);
+
+// Парсим аргументы --limit и --period
+const limitArg = args.find(a => a.startsWith("--limit="));
+const periodArg = args.find(a => a.startsWith("--period="));
+
+const TARGET_REVIEWS = limitArg ? parseInt(limitArg.split("=")[1]) : 2000;
+
+// Вычисляем минимальную дату из --period
+function parsePeriod(arg) {
+  if (!arg) return null;
+  const val = arg.split("=")[1];
+  const now = Date.now();
+  if (val === "1d")  return new Date(now - 1  * 24 * 60 * 60 * 1000);
+  if (val === "7d")  return new Date(now - 7  * 24 * 60 * 60 * 1000);
+  if (val === "30d") return new Date(now - 30 * 24 * 60 * 60 * 1000);
+  return null;
+}
+const periodFrom = parsePeriod(periodArg);
+
+if (periodFrom) {
+  console.log(`📅 Фильтр по периоду: с ${periodFrom.toLocaleDateString("ru-RU")}`);
+}
 
 // Читаем куки из файла ozon_cookies.txt если есть
 function loadCookies() {
@@ -41,20 +64,15 @@ function extractSlug(input) {
     console.error("Пример: node ozon_analyzer.mjs https://www.ozon.ru/product/nazvanie-12345678/");
     process.exit(1);
   }
-  // https://www.ozon.ru/product/nazvanie-tovara-123456789/
   const match = input.match(/ozon\.ru\/product\/([^/?#]+)/);
   if (match) return match[1];
-  // Если передали просто slug
   return input.replace(/\/$/, "");
 }
 
-// Получаем отзывы через entrypoint-api
-async function fetchReviewsPage(slug, page = 1) {
-  let url = `https://www.ozon.ru/api/entrypoint-api.bx/page/json/v2?url=/product/${slug}/reviews/?page=${page}&sort=date_desc`;
+// Выполняет запрос следуя __rr редиректам Ozon
+async function ozonFetch(url) {
   let headers = { ...HEADERS };
-
   try {
-    // Ozon делает 307 редирект с __rr=1 при первом запросе — следуем вручную
     for (let i = 0; i < 5; i++) {
       const res = await fetch(url, { headers, redirect: "manual" });
       const setCookie = res.headers.get("set-cookie");
@@ -72,6 +90,15 @@ async function fetchReviewsPage(slug, page = 1) {
   } catch (e) {
     return null;
   }
+}
+
+// Получаем страницу отзывов
+async function fetchReviewsPage(slug, nextParams = null) {
+  const pageQuery = nextParams
+    ? `/product/${slug}/reviews/${nextParams}`
+    : `/product/${slug}/reviews/?page=1&sort=date_desc`;
+  const url = `https://www.ozon.ru/api/entrypoint-api.bx/page/json/v2?url=${encodeURIComponent(pageQuery)}`;
+  return ozonFetch(url);
 }
 
 // Вытаскиваем отзывы из ответа
@@ -92,12 +119,13 @@ function parseReviews(data) {
     for (const item of (parsed?.reviews || [])) {
       const text = item?.content?.comment || "";
       const rating = item?.content?.score || 0;
-      const date = item?.publishedAt ? new Date(item.publishedAt * 1000).toISOString().slice(0, 10) : "";
+      const publishedAt = item?.publishedAt ? new Date(item.publishedAt * 1000) : null;
+      const date = publishedAt ? publishedAt.toISOString().slice(0, 10) : "";
       const pros = item?.content?.positive || "";
       const cons = item?.content?.negative || "";
 
       if (text.length > 5) {
-        reviews.push({ text, rating, date, pros, cons });
+        reviews.push({ text, rating, date, pros, cons, publishedAt });
       }
     }
   }
@@ -119,24 +147,36 @@ function parseProductName(data) {
   return slug;
 }
 
+// Вытаскиваем nextButton из paging виджета
+function parseNextButton(data) {
+  const widgets = data?.widgetStates || {};
+  const reviewKey = Object.keys(widgets).find(k => k.startsWith("webListReviews"));
+  if (!reviewKey) return null;
+  try {
+    const widget = typeof widgets[reviewKey] === "string" ? JSON.parse(widgets[reviewKey]) : widgets[reviewKey];
+    return widget?.paging?.nextButton || null;
+  } catch { return null; }
+}
+
 // Основная функция сбора отзывов
 async function collectReviews(slug) {
   console.log(`\n📦 Загружаю товар: ${slug}\n`);
 
   const allReviews = [];
-  let page = 1;
+  let pageNum = 1;
+  let nextParams = null;
   let productName = slug;
 
   while (allReviews.length < TARGET_REVIEWS) {
-    process.stdout.write(`  Страница ${page}... `);
-    const data = await fetchReviewsPage(slug, page);
+    process.stdout.write(`  Страница ${pageNum}... `);
+    const data = await fetchReviewsPage(slug, nextParams);
 
     if (!data) {
       console.log("❌ Ошибка запроса");
       break;
     }
 
-    if (page === 1) {
+    if (pageNum === 1) {
       productName = parseProductName(data);
     }
 
@@ -147,14 +187,36 @@ async function collectReviews(slug) {
       break;
     }
 
-    allReviews.push(...reviews);
-    console.log(`получено ${reviews.length} (всего: ${allReviews.length})`);
+    // Фильтр по периоду — отзывы отсортированы по убыванию даты
+    if (periodFrom) {
+      const filtered = reviews.filter(r => r.publishedAt && r.publishedAt >= periodFrom);
+      const oldestOnPage = reviews[reviews.length - 1]?.publishedAt;
 
-    page++;
+      allReviews.push(...filtered);
+      console.log(`получено ${filtered.length} за период (всего: ${allReviews.length})`);
+
+      // Если последний отзыв на странице старше периода — дальше нет смысла
+      if (oldestOnPage && oldestOnPage < periodFrom) {
+        console.log("  → достигли границы периода, останавливаемся");
+        break;
+      }
+    } else {
+      allReviews.push(...reviews);
+      console.log(`получено ${reviews.length} (всего: ${allReviews.length})`);
+    }
+
+    nextParams = parseNextButton(data);
+    if (!nextParams) break;
+
+    pageNum++;
     await new Promise(r => setTimeout(r, 800));
   }
 
-  return { productName, reviews: allReviews };
+  // Убираем технический timestamp перед возвратом
+  return {
+    productName,
+    reviews: allReviews.map(({ publishedAt, ...r }) => r),
+  };
 }
 
 // Анализ через Claude API
@@ -213,10 +275,11 @@ ${reviewsText}
 }
 
 // Сохраняем отзывы в файл
-function saveReviews(slug, reviews) {
-  const filename = `reviews_ozon_${slug.split("-").pop()}.txt`;
+function saveReviews(slug, reviews, period) {
+  const suffix = period ? `_${period.split("=")[1]}` : "";
+  const filename = `reviews_ozon_${slug.split("-").pop()}${suffix}.txt`;
   const content = reviews.map((r, i) =>
-    `${i + 1}. [${r.rating}★] ${r.text}${r.pros ? "\n   ✅ " + r.pros : ""}${r.cons ? "\n   ❌ " + r.cons : ""}`
+    `${i + 1}. [${r.rating}★] [${r.date}] ${r.text}${r.pros ? "\n   ✅ " + r.pros : ""}${r.cons ? "\n   ❌ " + r.cons : ""}`
   ).join("\n\n");
   writeFileSync(filename, content, "utf8");
   console.log(`\n💾 Отзывы сохранены в ${filename}`);
@@ -233,22 +296,24 @@ if (reviews.length === 0) {
   console.log("  1. Ozon изменил структуру API — нужно обновить парсер");
   console.log("  2. Товар не найден или нет отзывов");
   console.log("  3. Ozon заблокировал запрос — попробуй через минуту");
+  if (periodFrom) console.log("  4. За указанный период отзывов нет");
   process.exit(1);
 }
 
 console.log(`\n✅ Собрано отзывов: ${reviews.length}`);
 console.log(`📦 Товар: ${productName}`);
+if (periodArg) console.log(`📅 Период: ${periodArg.split("=")[1]}`);
 
 // Показываем примеры
 console.log("\n📝 Примеры отзывов:");
 console.log("─".repeat(60));
 reviews.slice(0, 3).forEach((r, i) => {
-  console.log(`${i + 1}. [${r.rating}★] ${r.text.slice(0, 150)}${r.text.length > 150 ? "..." : ""}`);
+  console.log(`${i + 1}. [${r.rating}★] [${r.date}] ${r.text.slice(0, 150)}${r.text.length > 150 ? "..." : ""}`);
 });
 console.log("─".repeat(60));
 
 // Сохраняем отзывы
-saveReviews(slug, reviews);
+saveReviews(slug, reviews, periodArg);
 
 const analysis = await analyzeWithClaude(productName, reviews);
 
@@ -259,11 +324,12 @@ if (analysis) {
   console.log(analysis);
   console.log("═".repeat(60));
 
-  const resultFile = `result_ozon_${slug.split("-").pop()}.md`;
-  const content = `# Анализ ЦА: ${productName}\n\nOzon slug: ${slug}\nОтзывов: ${Math.min(reviews.length, 300)}\nДата: ${new Date().toLocaleDateString("ru-RU")}\n\n${analysis}`;
+  const suffix = periodArg ? `_${periodArg.split("=")[1]}` : "";
+  const resultFile = `result_ozon_${slug.split("-").pop()}${suffix}.md`;
+  const content = `# Анализ ЦА: ${productName}\n\nOzon slug: ${slug}\nОтзывов: ${Math.min(reviews.length, 300)}\nПериод: ${periodArg || "все время"}\nДата: ${new Date().toLocaleDateString("ru-RU")}\n\n${analysis}`;
   writeFileSync(resultFile, content, "utf8");
   console.log(`💾 Анализ сохранён: ${resultFile}`);
 } else {
   console.log("\nВсе отзывы:");
-  reviews.forEach((r, i) => console.log(`\n${i + 1}. [${r.rating}★] ${r.text}`));
+  reviews.forEach((r, i) => console.log(`\n${i + 1}. [${r.rating}★] [${r.date}] ${r.text}`));
 }

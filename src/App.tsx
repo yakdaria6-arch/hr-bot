@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import ApplyPage from './pages/ApplyPage'
+import AuditPage from './pages/AuditPage'
 import AdminPage from './pages/AdminPage'
 import AdminLogin from './pages/AdminLogin'
 
@@ -24,6 +25,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/apply/:vacancyId" element={<ApplyPage />} />
+        <Route path="/audit" element={<AuditPage />} />
         <Route path="/admin" element={<AdminRoute />} />
         <Route path="/" element={<Navigate to="/admin" replace />} />
       </Routes>

@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { LayoutDashboard, Users, Briefcase, LogOut, Bot } from 'lucide-react'
+import { LayoutDashboard, Users, Briefcase, LogOut, Bot, BarChart2 } from 'lucide-react'
 import Dashboard from '../components/Dashboard'
 import CandidateTable from '../components/CandidateTable'
 import VacancyManager from '../components/VacancyManager'
+import AuditOrders from '../components/AuditOrders'
 
-type Tab = 'dashboard' | 'candidates' | 'vacancies'
+type Tab = 'dashboard' | 'candidates' | 'vacancies' | 'audits'
 
 interface Props {
   onLogout: () => void
@@ -17,6 +18,7 @@ export default function AdminPage({ onLogout }: Props) {
     { id: 'dashboard' as Tab,  label: 'Дашборд',    Icon: LayoutDashboard },
     { id: 'candidates' as Tab, label: 'Кандидаты',  Icon: Users },
     { id: 'vacancies' as Tab,  label: 'Вакансии',   Icon: Briefcase },
+    { id: 'audits' as Tab,     label: 'Аудиты',     Icon: BarChart2 },
   ]
 
   return (
@@ -66,6 +68,7 @@ export default function AdminPage({ onLogout }: Props) {
         {tab === 'dashboard'  && <Dashboard />}
         {tab === 'candidates' && <CandidateTable />}
         {tab === 'vacancies'  && <VacancyManager />}
+        {tab === 'audits'     && <AuditOrders />}
       </main>
     </div>
   )

@@ -77,6 +77,42 @@ create policy "anon update candidates"
   with check (true);
 
 -- ─────────────────────────────────────────────
+--  AUDIT ORDERS
+-- ─────────────────────────────────────────────
+create table if not exists audit_orders (
+  id            uuid primary key default gen_random_uuid(),
+  url           text not null,
+  platform      text not null,       -- 'ozon' | 'wb'
+  contact       text not null,       -- email or telegram
+  notes         text default '',
+  screenshots   jsonb not null default '[]',  -- array of storage paths
+  status        text not null default 'new',  -- 'new'|'processing'|'done'
+  pdf_url       text default '',
+  created_at    timestamptz not null default now()
+);
+
+alter table audit_orders enable row level security;
+
+-- Anyone can submit an order
+create policy "public insert audit_orders"
+  on audit_orders for insert
+  with check (true);
+
+-- Admin (anon key) can read and update
+create policy "anon read audit_orders"
+  on audit_orders for select
+  using (true);
+
+create policy "anon update audit_orders"
+  on audit_orders for update
+  using (true)
+  with check (true);
+
+-- Storage bucket: audit-screenshots
+-- Create this manually in Supabase Dashboard → Storage → New bucket
+-- Name: audit-screenshots, Public: true
+
+-- ─────────────────────────────────────────────
 --  SAMPLE VACANCY (optional, for testing)
 -- ─────────────────────────────────────────────
 /*
